@@ -206,6 +206,31 @@ void padbridge_switch_protocol_receive(
     memcpy(protocol->request, report, report_size);
     protocol->request_size = report_size;
     protocol->has_request = true;
+
+    if (report_size >= 10u &&
+        (report[0] == REQUEST_RUMBLE_SUBCOMMAND ||
+         report[0] == REQUEST_RUMBLE_ONLY)) {
+        padbridge_switch_decode_rumble(report + 2, &protocol->rumble);
+        protocol->has_rumble = true;
+    }
+}
+
+bool padbridge_switch_protocol_take_rumble(
+    padbridge_switch_protocol_t *protocol,
+    padbridge_rumble_command_t *command)
+{
+    if (protocol == NULL || command == NULL || !protocol->has_rumble) {
+        return false;
+    }
+
+    *command = protocol->rumble;
+    if (!protocol->vibration_enabled) {
+        command->weak_magnitude = 0u;
+        command->strong_magnitude = 0u;
+        command->duration_ms = 0u;
+    }
+    protocol->has_rumble = false;
+    return true;
 }
 
 size_t padbridge_switch_protocol_next_report(

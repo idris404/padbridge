@@ -7,6 +7,8 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 add_library(padbridge_core
+    src/input_filter.c
+    src/rumble.c
     src/runtime.c
     src/switch_report.c
     src/switch_protocol.c
@@ -38,6 +40,14 @@ add_test(NAME switch_usb_descriptors COMMAND test_switch_usb_descriptors)
 add_executable(test_runtime tests/test_runtime.c)
 target_link_libraries(test_runtime PRIVATE padbridge_core)
 add_test(NAME runtime COMMAND test_runtime)
+
+add_executable(test_input_filter tests/test_input_filter.c)
+target_link_libraries(test_input_filter PRIVATE padbridge_core)
+add_test(NAME input_filter COMMAND test_input_filter)
+
+add_executable(test_rumble tests/test_rumble.c)
+target_link_libraries(test_rumble PRIVATE padbridge_core)
+add_test(NAME rumble COMMAND test_rumble)
 
 
 

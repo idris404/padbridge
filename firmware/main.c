@@ -13,6 +13,7 @@ int main(void)
 {
     padbridge_switch_protocol_t protocol;
     padbridge_gamepad_state_t gamepad;
+    padbridge_rumble_command_t rumble;
     uint8_t wire_report[PADBRIDGE_SWITCH_WIRE_REPORT_SIZE];
 
     padbridge_shared_state_init();
@@ -33,6 +34,10 @@ int main(void)
                 now_ms,
                 wire_report);
             tud_hid_n_report(0u, 0u, wire_report, (uint16_t)size);
+        }
+
+        if (padbridge_switch_protocol_take_rumble(&protocol, &rumble)) {
+            padbridge_shared_rumble_set(&rumble);
         }
     }
 }

@@ -39,6 +39,9 @@ Implemented and locally verified:
 - persistent Bluetooth bonding and automatic reconnection through BTstack;
 - LED connection diagnostics and automatic recovery after a disconnection;
 - a five-second pairing reset shortcut (`L + R + ZL + ZR + Minus + Plus`);
+- single-active-controller arbitration to prevent mixed inputs;
+- configurable axial stick deadzones (7.6% by default);
+- Switch HD-rumble decoding and safe Bluepad32 dual-motor forwarding;
 - controller-to-Nintendo button, stick and battery translation;
 - TinyUSB and the Switch protocol on core 0;
 - a successful Pico 2 W firmware build producing a `.uf2` image;
@@ -49,7 +52,7 @@ Still requiring physical hardware validation:
 - USB enumeration and handshake against a real Switch;
 - Bluetooth pairing and reconnection with real controllers;
 - end-to-end button, stick and latency checks;
-- rumble and IMU/gyro forwarding;
+- rumble validation on each Bluetooth controller and IMU/gyro forwarding;
 - validation of pairing reset and recovery behaviour on hardware.
 
 ## Status LED

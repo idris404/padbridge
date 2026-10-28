@@ -82,12 +82,70 @@ static void test_spi_read_is_bounded(void)
     assert(output[19] == 44u);
 }
 
+static void test_rumble_is_forwarded_only_when_enabled(void)
+{
+    padbridge_switch_protocol_t protocol;
+    padbridge_rumble_command_t rumble;
+    uint8_t request[64] = {0};
+    uint8_t output[64];
+
+    padbridge_switch_protocol_init(&protocol, 0u);
+    (void)padbridge_switch_protocol_next_report(&protocol, 1u, output);
+
+    request[0] = 0x10u;
+    request[2] = 0x00u;
+    request[3] = 0x01u;
+    request[4] = 0x80u;
+    request[5] = 0x48u;
+    request[6] = 0x00u;
+    request[7] = 0x01u;
+    request[8] = 0x00u;
+    request[9] = 0x60u;
+    padbridge_switch_protocol_receive(&protocol, request, sizeof(request));
+    assert(padbridge_switch_protocol_take_rumble(&protocol, &rumble));
+    assert(rumble.duration_ms == 0u);
+
+    memset(request, 0, sizeof(request));
+    request[0] = 0x01u;
+    request[2] = 0x00u;
+    request[3] = 0x01u;
+    request[4] = 0x40u;
+    request[5] = 0x40u;
+    request[6] = 0x00u;
+    request[7] = 0x01u;
+    request[8] = 0x40u;
+    request[9] = 0x40u;
+    request[10] = 0x48u;
+    request[11] = 0x01u;
+    padbridge_switch_protocol_receive(&protocol, request, sizeof(request));
+    (void)padbridge_switch_protocol_next_report(&protocol, 2u, output);
+    assert(protocol.vibration_enabled);
+
+    memset(request, 0, sizeof(request));
+    request[0] = 0x10u;
+    request[2] = 0x00u;
+    request[3] = 0x01u;
+    request[4] = 0x80u;
+    request[5] = 0x48u;
+    request[6] = 0x00u;
+    request[7] = 0x01u;
+    request[8] = 0x00u;
+    request[9] = 0x60u;
+    padbridge_switch_protocol_receive(&protocol, request, sizeof(request));
+    assert(padbridge_switch_protocol_take_rumble(&protocol, &rumble));
+    assert(rumble.weak_magnitude > 0u);
+    assert(rumble.strong_magnitude > rumble.weak_magnitude);
+    assert(rumble.duration_ms == 120u);
+    assert(!padbridge_switch_protocol_take_rumble(&protocol, &rumble));
+}
+
 int main(void)
 {
     test_initial_usb_identification();
     test_device_info_subcommand();
     test_standard_input_report();
     test_spi_read_is_bounded();
+    test_rumble_is_forwarded_only_when_enabled();
     puts("switch_protocol: all tests passed");
     return 0;
 }

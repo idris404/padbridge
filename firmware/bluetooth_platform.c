@@ -9,6 +9,7 @@
 #include "uni.h"
 
 #include "padbridge/gamepad.h"
+#include "padbridge/input_filter.h"
 #include "padbridge/runtime.h"
 #include "sdkconfig.h"
 #include "shared_state.h"
@@ -16,11 +17,14 @@
 #define PADBRIDGE_LED_TICK_MS 50u
 #define PADBRIDGE_PAIRING_RESET_HOLD_MS 5000u
 #define PADBRIDGE_PAIRING_RESET_LED_MS 1000u
+#define PADBRIDGE_STICK_DEADZONE 2500u
 
 static padbridge_runtime_t runtime;
 static padbridge_pairing_reset_detector_t pairing_reset_detector;
 static btstack_timer_source_t led_timer;
 static bool led_timer_started;
+static uni_hid_device_t *active_device;
+static uint32_t handled_rumble_sequence;
 
 static uint32_t runtime_now_ms(void)
 {
@@ -38,10 +42,28 @@ static void set_runtime_state(padbridge_runtime_state_t state)
 static void led_timer_handler(btstack_timer_source_t *timer)
 {
     const uint32_t now_ms = runtime_now_ms();
+    padbridge_rumble_command_t rumble;
+    uint32_t rumble_sequence;
+
     if (runtime.state == PADBRIDGE_RUNTIME_RESETTING_PAIRING &&
         (now_ms - runtime.state_since_ms) >= PADBRIDGE_PAIRING_RESET_LED_MS) {
         padbridge_runtime_set_state(&runtime, PADBRIDGE_RUNTIME_SCANNING, now_ms);
     }
+
+    if (active_device != NULL &&
+        padbridge_shared_rumble_get(&rumble, &rumble_sequence) &&
+        rumble_sequence != handled_rumble_sequence) {
+        handled_rumble_sequence = rumble_sequence;
+        if (active_device->report_parser.play_dual_rumble != NULL) {
+            active_device->report_parser.play_dual_rumble(
+                active_device,
+                0u,
+                rumble.duration_ms,
+                rumble.weak_magnitude,
+                rumble.strong_magnitude);
+        }
+    }
+
     cyw43_arch_gpio_put(
         CYW43_WL_GPIO_LED_PIN,
         padbridge_runtime_led_is_on(&runtime, now_ms));
@@ -107,10 +129,14 @@ static void map_gamepad(const uni_controller_t *controller)
     state.dpad_left = (gamepad->dpad & DPAD_LEFT) != 0u;
     state.dpad_right = (gamepad->dpad & DPAD_RIGHT) != 0u;
 
-    state.left_x = axis_to_i16(gamepad->axis_x, false);
-    state.left_y = axis_to_i16(gamepad->axis_y, true);
-    state.right_x = axis_to_i16(gamepad->axis_rx, false);
-    state.right_y = axis_to_i16(gamepad->axis_ry, true);
+    state.left_x = padbridge_axis_apply_deadzone(
+        axis_to_i16(gamepad->axis_x, false), PADBRIDGE_STICK_DEADZONE);
+    state.left_y = padbridge_axis_apply_deadzone(
+        axis_to_i16(gamepad->axis_y, true), PADBRIDGE_STICK_DEADZONE);
+    state.right_x = padbridge_axis_apply_deadzone(
+        axis_to_i16(gamepad->axis_rx, false), PADBRIDGE_STICK_DEADZONE);
+    state.right_y = padbridge_axis_apply_deadzone(
+        axis_to_i16(gamepad->axis_ry, true), PADBRIDGE_STICK_DEADZONE);
     state.battery_percent = controller->battery == 0u
                           ? 100u
                           : (uint8_t)(((uint16_t)controller->battery * 100u) / 255u);
@@ -146,15 +172,19 @@ static uni_error_t device_discovered(
 
 static void device_connected(uni_hid_device_t *device)
 {
-    (void)device;
     runtime.connection_attempts++;
-    set_runtime_state(PADBRIDGE_RUNTIME_CONNECTING);
+    if (active_device == NULL || active_device == device) {
+        set_runtime_state(PADBRIDGE_RUNTIME_CONNECTING);
+    }
 }
 
 static void device_disconnected(uni_hid_device_t *device)
 {
-    (void)device;
     runtime.disconnections++;
+    if (device != active_device) {
+        return;
+    }
+    active_device = NULL;
     padbridge_shared_state_clear();
     padbridge_pairing_reset_detector_init(&pairing_reset_detector);
     if (runtime.state != PADBRIDGE_RUNTIME_RESETTING_PAIRING) {
@@ -165,7 +195,16 @@ static void device_disconnected(uni_hid_device_t *device)
 
 static uni_error_t device_ready(uni_hid_device_t *device)
 {
-    (void)device;
+    padbridge_rumble_command_t ignored_rumble;
+
+    if (device->controller.klass != UNI_CONTROLLER_CLASS_GAMEPAD) {
+        return UNI_ERROR_INVALID_CONTROLLER;
+    }
+    if (active_device != NULL && active_device != device) {
+        return UNI_ERROR_NO_SLOTS;
+    }
+    active_device = device;
+    padbridge_shared_rumble_get(&ignored_rumble, &handled_rumble_sequence);
     runtime.successful_connections++;
     set_runtime_state(PADBRIDGE_RUNTIME_READY);
     return UNI_ERROR_SUCCESS;
@@ -189,7 +228,7 @@ static bool pairing_reset_combo_pressed(const uni_gamepad_t *gamepad)
 
 static void controller_data(uni_hid_device_t *device, uni_controller_t *controller)
 {
-    if (controller->klass == UNI_CONTROLLER_CLASS_GAMEPAD) {
+    if (device == active_device && controller->klass == UNI_CONTROLLER_CLASS_GAMEPAD) {
         runtime.input_reports++;
         map_gamepad(controller);
 
