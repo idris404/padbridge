@@ -36,6 +36,9 @@ Implemented and locally verified:
 - USB device, HID and configuration descriptors;
 - USB handshake and common Switch subcommand replies;
 - Bluepad32 Bluetooth reception on core 1;
+- persistent Bluetooth bonding and automatic reconnection through BTstack;
+- LED connection diagnostics and automatic recovery after a disconnection;
+- a five-second pairing reset shortcut (`L + R + ZL + ZR + Minus + Plus`);
 - controller-to-Nintendo button, stick and battery translation;
 - TinyUSB and the Switch protocol on core 0;
 - a successful Pico 2 W firmware build producing a `.uf2` image;
@@ -47,7 +50,19 @@ Still requiring physical hardware validation:
 - Bluetooth pairing and reconnection with real controllers;
 - end-to-end button, stick and latency checks;
 - rumble and IMU/gyro forwarding;
-- persistent pairing controls and recovery behaviour.
+- validation of pairing reset and recovery behaviour on hardware.
+
+## Status LED
+
+- slow blink: searching for a Bluetooth controller;
+- fast blink: establishing the controller connection;
+- solid: controller ready;
+- very fast blink: stored pairings are being cleared;
+
+BTstack stores pairing keys in the Pico flash, so a previously paired controller
+can reconnect after a reboot. To forget the stored controllers and reopen
+pairing, hold `L + R + ZL + ZR + Minus + Plus` for five seconds on the connected
+controller. This intentionally clears every stored Bluetooth pairing.
 
 ## Run the core tests
 

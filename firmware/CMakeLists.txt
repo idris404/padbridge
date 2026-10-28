@@ -36,6 +36,7 @@ add_executable(padbridge_switch
     bluetooth_platform.c
     shared_state.c
     usb_callbacks.c
+    ../src/runtime.c
     ../src/switch_protocol.c
     ../src/switch_report.c
     ../src/switch_usb_descriptors.c
