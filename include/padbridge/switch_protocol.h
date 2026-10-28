@@ -24,6 +24,7 @@ typedef struct {
     bool imu_enabled;
     bool vibration_enabled;
     bool has_rumble;
+    bool has_player_update;
 } padbridge_switch_protocol_t;
 
 void padbridge_switch_protocol_init(
@@ -39,9 +40,19 @@ void padbridge_switch_protocol_receive(
     const uint8_t *report,
     size_t report_size);
 
+void padbridge_switch_protocol_receive_hid(
+    padbridge_switch_protocol_t *protocol,
+    uint8_t report_id,
+    const uint8_t *report,
+    size_t report_size);
+
 bool padbridge_switch_protocol_take_rumble(
     padbridge_switch_protocol_t *protocol,
     padbridge_rumble_command_t *command);
+
+bool padbridge_switch_protocol_take_player(
+    padbridge_switch_protocol_t *protocol,
+    uint8_t *player_leds);
 
 size_t padbridge_switch_protocol_next_report(
     padbridge_switch_protocol_t *protocol,

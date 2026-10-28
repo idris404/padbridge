@@ -28,3 +28,11 @@ int16_t padbridge_axis_apply_deadzone(int16_t value, uint16_t deadzone)
 
     return (int16_t)(signed_value < 0 ? -scaled : scaled);
 }
+
+uint8_t padbridge_battery_to_percent(uint8_t raw_battery, uint8_t fallback_percent)
+{
+    if (raw_battery == UINT8_MAX) {
+        return fallback_percent > 100u ? 100u : fallback_percent;
+    }
+    return (uint8_t)(((uint16_t)raw_battery * 100u) / 254u);
+}

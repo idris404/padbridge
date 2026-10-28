@@ -10,6 +10,12 @@ include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(padbridge_switch_firmware C CXX ASM)
 
+set(PADBRIDGE_STICK_DEADZONE 2500 CACHE STRING
+    "Axial stick deadzone in signed 16-bit units (0..32766)")
+if(PADBRIDGE_STICK_DEADZONE LESS 0 OR PADBRIDGE_STICK_DEADZONE GREATER 32766)
+    message(FATAL_ERROR "PADBRIDGE_STICK_DEADZONE must be between 0 and 32766")
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -56,6 +62,10 @@ target_include_directories(padbridge_switch PRIVATE
 target_compile_options(padbridge_switch PRIVATE
     -Wall
     -Wextra
+)
+
+target_compile_definitions(padbridge_switch PRIVATE
+    PADBRIDGE_STICK_DEADZONE=${PADBRIDGE_STICK_DEADZONE}u
 )
 
 target_link_libraries(padbridge_switch PRIVATE

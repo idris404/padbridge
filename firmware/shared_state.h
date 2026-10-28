@@ -14,5 +14,8 @@ bool padbridge_shared_rumble_get(
     padbridge_rumble_command_t *command,
     uint32_t *sequence);
 
+void padbridge_shared_player_set(uint8_t player_leds);
+bool padbridge_shared_player_get(uint8_t *player_leds, uint32_t *sequence);
+
 #endif
 

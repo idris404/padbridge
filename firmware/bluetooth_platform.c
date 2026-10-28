@@ -17,7 +17,9 @@
 #define PADBRIDGE_LED_TICK_MS 50u
 #define PADBRIDGE_PAIRING_RESET_HOLD_MS 5000u
 #define PADBRIDGE_PAIRING_RESET_LED_MS 1000u
+#ifndef PADBRIDGE_STICK_DEADZONE
 #define PADBRIDGE_STICK_DEADZONE 2500u
+#endif
 
 static padbridge_runtime_t runtime;
 static padbridge_pairing_reset_detector_t pairing_reset_detector;
@@ -25,6 +27,7 @@ static btstack_timer_source_t led_timer;
 static bool led_timer_started;
 static uni_hid_device_t *active_device;
 static uint32_t handled_rumble_sequence;
+static uint32_t handled_player_sequence;
 
 static uint32_t runtime_now_ms(void)
 {
@@ -44,6 +47,8 @@ static void led_timer_handler(btstack_timer_source_t *timer)
     const uint32_t now_ms = runtime_now_ms();
     padbridge_rumble_command_t rumble;
     uint32_t rumble_sequence;
+    uint8_t player_leds;
+    uint32_t player_sequence;
 
     if (runtime.state == PADBRIDGE_RUNTIME_RESETTING_PAIRING &&
         (now_ms - runtime.state_since_ms) >= PADBRIDGE_PAIRING_RESET_LED_MS) {
@@ -61,6 +66,15 @@ static void led_timer_handler(btstack_timer_source_t *timer)
                 rumble.duration_ms,
                 rumble.weak_magnitude,
                 rumble.strong_magnitude);
+        }
+    }
+
+    if (active_device != NULL &&
+        padbridge_shared_player_get(&player_leds, &player_sequence) &&
+        player_sequence != handled_player_sequence) {
+        handled_player_sequence = player_sequence;
+        if (active_device->report_parser.set_player_leds != NULL) {
+            active_device->report_parser.set_player_leds(active_device, player_leds);
         }
     }
 
@@ -137,9 +151,7 @@ static void map_gamepad(const uni_controller_t *controller)
         axis_to_i16(gamepad->axis_rx, false), PADBRIDGE_STICK_DEADZONE);
     state.right_y = padbridge_axis_apply_deadzone(
         axis_to_i16(gamepad->axis_ry, true), PADBRIDGE_STICK_DEADZONE);
-    state.battery_percent = controller->battery == 0u
-                          ? 100u
-                          : (uint8_t)(((uint16_t)controller->battery * 100u) / 255u);
+    state.battery_percent = padbridge_battery_to_percent(controller->battery, 100u);
 
     padbridge_shared_state_set(&state);
 }
@@ -196,6 +208,7 @@ static void device_disconnected(uni_hid_device_t *device)
 static uni_error_t device_ready(uni_hid_device_t *device)
 {
     padbridge_rumble_command_t ignored_rumble;
+    uint8_t ignored_player;
 
     if (device->controller.klass != UNI_CONTROLLER_CLASS_GAMEPAD) {
         return UNI_ERROR_INVALID_CONTROLLER;
@@ -205,6 +218,7 @@ static uni_error_t device_ready(uni_hid_device_t *device)
     }
     active_device = device;
     padbridge_shared_rumble_get(&ignored_rumble, &handled_rumble_sequence);
+    padbridge_shared_player_get(&ignored_player, &handled_player_sequence);
     runtime.successful_connections++;
     set_runtime_state(PADBRIDGE_RUNTIME_READY);
     return UNI_ERROR_SUCCESS;

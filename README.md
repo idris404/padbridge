@@ -42,6 +42,9 @@ Implemented and locally verified:
 - single-active-controller arbitration to prevent mixed inputs;
 - configurable axial stick deadzones (7.6% by default);
 - Switch HD-rumble decoding and safe Bluepad32 dual-motor forwarding;
+- Switch player LED forwarding when the Bluetooth controller supports it;
+- HID control-report reconstruction when TinyUSB supplies the report ID separately;
+- correct empty, full and unavailable battery-state conversion;
 - controller-to-Nintendo button, stick and battery translation;
 - TinyUSB and the Switch protocol on core 0;
 - a successful Pico 2 W firmware build producing a `.uf2` image;
@@ -82,6 +85,16 @@ Install the Raspberry Pi Pico SDK and an ARM embedded toolchain, then:
 ```sh
 export PICO_SDK_PATH=/absolute/path/to/pico-sdk
 cmake -S firmware -B build-firmware -DPICO_BOARD=pico2_w
+cmake --build build-firmware
+```
+
+The default stick deadzone is 2500 (about 7.6% of the signed axis range). It
+can be tuned without editing source code:
+
+```sh
+cmake -S firmware -B build-firmware \
+  -DPICO_BOARD=pico2_w \
+  -DPADBRIDGE_STICK_DEADZONE=2000
 cmake --build build-firmware
 ```
 

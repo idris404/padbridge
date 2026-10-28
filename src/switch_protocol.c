@@ -124,6 +124,7 @@ static bool build_subcommand_reply(
         break;
     case SUBCOMMAND_SET_PLAYER:
         protocol->player_number = protocol->request[11];
+        protocol->has_player_update = true;
         output[13] = 0x80;
         output[14] = SUBCOMMAND_SET_PLAYER;
         break;
@@ -215,6 +216,29 @@ void padbridge_switch_protocol_receive(
     }
 }
 
+void padbridge_switch_protocol_receive_hid(
+    padbridge_switch_protocol_t *protocol,
+    uint8_t report_id,
+    const uint8_t *report,
+    size_t report_size)
+{
+    if (report_id == 0u) {
+        padbridge_switch_protocol_receive(protocol, report, report_size);
+        return;
+    }
+    if (protocol == NULL || report == NULL) {
+        return;
+    }
+
+    uint8_t combined[PADBRIDGE_SWITCH_WIRE_REPORT_SIZE];
+    if (report_size > sizeof(combined) - 1u) {
+        report_size = sizeof(combined) - 1u;
+    }
+    combined[0] = report_id;
+    memcpy(combined + 1, report, report_size);
+    padbridge_switch_protocol_receive(protocol, combined, report_size + 1u);
+}
+
 bool padbridge_switch_protocol_take_rumble(
     padbridge_switch_protocol_t *protocol,
     padbridge_rumble_command_t *command)
@@ -230,6 +254,18 @@ bool padbridge_switch_protocol_take_rumble(
         command->duration_ms = 0u;
     }
     protocol->has_rumble = false;
+    return true;
+}
+
+bool padbridge_switch_protocol_take_player(
+    padbridge_switch_protocol_t *protocol,
+    uint8_t *player_leds)
+{
+    if (protocol == NULL || player_leds == NULL || !protocol->has_player_update) {
+        return false;
+    }
+    *player_leds = protocol->player_number & 0x0fu;
+    protocol->has_player_update = false;
     return true;
 }
 

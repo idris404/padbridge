@@ -88,11 +88,14 @@ void tud_hid_set_report_cb(
     uint16_t buffer_size)
 {
     (void)instance;
-    (void)report_id;
     (void)report_type;
 
     if (active_protocol != NULL) {
-        padbridge_switch_protocol_receive(active_protocol, buffer, buffer_size);
+        padbridge_switch_protocol_receive_hid(
+            active_protocol,
+            report_id,
+            buffer,
+            buffer_size);
     }
 }
 

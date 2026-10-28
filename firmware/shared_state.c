@@ -8,6 +8,8 @@ static critical_section_t state_lock;
 static padbridge_gamepad_state_t shared_state;
 static padbridge_rumble_command_t shared_rumble;
 static uint32_t shared_rumble_sequence;
+static uint8_t shared_player_leds;
+static uint32_t shared_player_sequence;
 
 void padbridge_shared_state_init(void)
 {
@@ -64,6 +66,26 @@ bool padbridge_shared_rumble_get(
     critical_section_enter_blocking(&state_lock);
     *command = shared_rumble;
     *sequence = shared_rumble_sequence;
+    critical_section_exit(&state_lock);
+    return true;
+}
+
+void padbridge_shared_player_set(uint8_t player_leds)
+{
+    critical_section_enter_blocking(&state_lock);
+    shared_player_leds = player_leds & 0x0fu;
+    shared_player_sequence++;
+    critical_section_exit(&state_lock);
+}
+
+bool padbridge_shared_player_get(uint8_t *player_leds, uint32_t *sequence)
+{
+    if (player_leds == NULL || sequence == NULL) {
+        return false;
+    }
+    critical_section_enter_blocking(&state_lock);
+    *player_leds = shared_player_leds;
+    *sequence = shared_player_sequence;
     critical_section_exit(&state_lock);
     return true;
 }

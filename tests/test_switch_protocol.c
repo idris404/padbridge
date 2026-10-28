@@ -139,6 +139,35 @@ static void test_rumble_is_forwarded_only_when_enabled(void)
     assert(!padbridge_switch_protocol_take_rumble(&protocol, &rumble));
 }
 
+static void test_control_report_id_is_restored_and_player_is_forwarded(void)
+{
+    padbridge_switch_protocol_t protocol;
+    uint8_t request_without_id[63] = {0};
+    uint8_t output[64];
+    uint8_t player_leds = 0u;
+
+    padbridge_switch_protocol_init(&protocol, 0u);
+    (void)padbridge_switch_protocol_next_report(&protocol, 1u, output);
+
+    // TinyUSB can provide report ID 0x01 separately for SET_REPORT requests.
+    // The remaining buffer starts at the packet counter (wire byte 1).
+    request_without_id[9] = 0x30u;
+    request_without_id[10] = 0x03u;
+    padbridge_switch_protocol_receive_hid(
+        &protocol,
+        0x01u,
+        request_without_id,
+        sizeof(request_without_id));
+    (void)padbridge_switch_protocol_next_report(&protocol, 2u, output);
+
+    assert(output[0] == 0x21u);
+    assert(output[13] == 0x80u);
+    assert(output[14] == 0x30u);
+    assert(padbridge_switch_protocol_take_player(&protocol, &player_leds));
+    assert(player_leds == 0x03u);
+    assert(!padbridge_switch_protocol_take_player(&protocol, &player_leds));
+}
+
 int main(void)
 {
     test_initial_usb_identification();
@@ -146,6 +175,7 @@ int main(void)
     test_standard_input_report();
     test_spi_read_is_bounded();
     test_rumble_is_forwarded_only_when_enabled();
+    test_control_report_id_is_restored_and_player_is_forwarded();
     puts("switch_protocol: all tests passed");
     return 0;
 }

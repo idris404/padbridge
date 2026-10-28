@@ -14,6 +14,7 @@ int main(void)
     padbridge_switch_protocol_t protocol;
     padbridge_gamepad_state_t gamepad;
     padbridge_rumble_command_t rumble;
+    uint8_t player_leds;
     uint8_t wire_report[PADBRIDGE_SWITCH_WIRE_REPORT_SIZE];
 
     padbridge_shared_state_init();
@@ -38,6 +39,9 @@ int main(void)
 
         if (padbridge_switch_protocol_take_rumble(&protocol, &rumble)) {
             padbridge_shared_rumble_set(&rumble);
+        }
+        if (padbridge_switch_protocol_take_player(&protocol, &player_leds)) {
+            padbridge_shared_player_set(player_leds);
         }
     }
 }

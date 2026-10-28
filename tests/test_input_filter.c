@@ -33,12 +33,22 @@ static void test_invalid_full_deadzone_centers_axis(void)
     assert(padbridge_axis_apply_deadzone(-30000, UINT16_MAX) == 0);
 }
 
+static void test_bluepad_battery_range(void)
+{
+    assert(padbridge_battery_to_percent(0u, 100u) == 0u);
+    assert(padbridge_battery_to_percent(127u, 100u) == 50u);
+    assert(padbridge_battery_to_percent(254u, 100u) == 100u);
+    assert(padbridge_battery_to_percent(255u, 75u) == 75u);
+    assert(padbridge_battery_to_percent(255u, 200u) == 100u);
+}
+
 int main(void)
 {
     test_zero_deadzone_preserves_value();
     test_values_inside_deadzone_are_centered();
     test_values_outside_deadzone_are_rescaled();
     test_invalid_full_deadzone_centers_axis();
+    test_bluepad_battery_range();
     puts("input filter tests passed");
     return 0;
 }
